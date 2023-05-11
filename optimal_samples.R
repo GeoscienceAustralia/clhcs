@@ -77,13 +77,13 @@ mat.seq <- matrix(NA, ncol = 8, nrow = length(cseq)) #empty matix for outputs
 
 
 for (w in seq_along(cseq)){ # for every sample number configuration....
-  s.size <- cseq[w]  # sample size
+  sample_size <- cseq[w]  # sample size
   mat.f <- matrix(NA, ncol = 8, nrow = its) # placement for iteration outputs
 
   #internal loop
   for (j in 1:its) { #Note that this takes quite a while to run to completion
     repeat {
-      ss <- clhs(covs_df[, start_pos:end_pos], size = s.size, progress = T, iter = 1000)
+      ss <- clhs(covs_df[, start_pos:end_pos], size = sample_size, progress = T, iter = 1000)
       s.df <- covs_df[ss,]
       if (sum(duplicated(s.df) | duplicated(s.df[nrow(s.df):1,])[nrow(s.df):1]) < 2) {
         break
@@ -178,33 +178,16 @@ for (w in seq_along(cseq)){ # for every sample number configuration....
     ## Fourth test: Kullback-Leibler (KL) divergence
     ####Compare whole study area covariate space with the slected sample
     #sample data hypercube (essentially the same script as for the grid data but just doing it on the sample data)
-    h.mat <- matrix(1, nrow = num_bins, ncol = num_cols)
-
-    for (rowIndex in 1:nrow(s.df)) {
-      colIndex <- 1
-      for (col in 3:ncol(s.df)) {
-        dataPoint <- s.df[rowIndex, col]
-        for (binIndex in 1:num_bins) {
-          lowerBound <- covarite_quantiles[binIndex, colIndex]
-          upperBound <- covarite_quantiles[binIndex + 1, colIndex]
-          if (dataPoint >= lowerBound && dataPoint <= upperBound) {
-            h.mat[binIndex, colIndex] <- h.mat[binIndex, colIndex] + 1
-          }
-        }
-        colIndex <- colIndex + 1
-      }
-    }
-
-    #h.mat
+    sample_hypercube <- generate_hypercube(covariate_data = s.df[, start_pos:end_pos], number_of_bins = num_bins)
     #Kullback-Leibler (KL) divergence
-    klo.1 <- KL.empirical(c(covariate_hypercube[, 1]), c(h.mat[, 1])) #1
-    klo.2 <- KL.empirical(c(covariate_hypercube[, 2]), c(h.mat[, 2])) #2
-    klo.3 <- KL.empirical(c(covariate_hypercube[, 3]), c(h.mat[, 3])) #3
-    # klo.4<- KL.empirical(c(cov.mat[,4]), c(h.mat[,4])) #4
-    klo <- mean(c(klo.1, klo.2, klo.3))
+    klo <- compute_kl_divergence(covariate_hypercube, sample_data = sample_hypercube)
     mat.f[j, 8] <- klo  # value of 0 means no divergence
   }
 
+  print("With a sample size:")
+  print(sample_size)
+  print("KL divergence:")
+  print(mat.f[, 8])
 
   #arrange outputs
   mat.seq[w, 1] <- mean(mat.f[, 6])
@@ -248,21 +231,21 @@ plot(x, y, xlab = "sample number", ylab = "1 - PC similarity")          # Initia
 start <- list()     # Initialize an empty list for the starting values
 
 #fit 1
-manipulate(
-{
-  plot(x, y)
-  k <- kk; b0 <- b00; b1 <- b10
-  curve(k * exp(-b1 * x) + b0, add = TRUE)
-  start <<- list(k = k, b0 = b0, b1 = b1)
-},
-  kk = slider(0, 5, step = 0.01, initial = 2),
-  b10 = slider(0, 1, step = 0.000001, initial = 0.01),
-  b00 = slider(0, 1, step = 0.000001, initial = 0.01))
+# manipulate(
+#   {
+#     plot(x, y)
+#     k <- kk; b0 <- b00; b1 <- b10
+#     curve(k * exp(-b1 * x) + b0, add = TRUE)
+#     start <<- list(k = k, b0 = b0, b1 = b1)
+#   },
+#   kk = slider(0, 5, step = 0.01, initial = 2),
+#   b10 = slider(0, 1, step = 0.000001, initial = 0.01),
+#   b00 = slider(0, 1, step = 0.000001, initial = 0.01)
+# )
 
-fit1 <- nls(y ~ k * exp(-b1 * x) + b0, start = start)
+fit1 <- nls(y ~ k * exp(-b1 * x) + b0, start = list(k=2, b0=0.01, b1=0.01))
 summary(fit1)
 lines(x, fitted(fit1), col = "red")
-
 
 ### Not used ###
 #double exponential
@@ -303,7 +286,7 @@ plot(x, y, xlab = "sample number", ylab = "normalised PIP", type = "l", lwd = 2)
 x1 <- c(-1, 500); y1 <- c(0.95, 0.95)
 lines(x1, y1, lwd = 2, col = "red")
 
-x2 <- c(90, 90); y2 <- c(0, 1)
+x2 <- c(100, 100); y2 <- c(0, 1)
 lines(x2, y2, lwd = 2, col = "red")
 #############################################################################
 
