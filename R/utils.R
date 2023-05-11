@@ -2,11 +2,11 @@
 ############################################################
 library(entropy)
 
-compute_kl_divergence <- function(cov.mat, h.mat) {
+compute_kl_divergence <- function(covariate_data, sample_data) {
   # Kullback-Leibler (KL) divergence
-  klo <- vector(length = ncol(cov.mat), mode = "numeric")
-  for (col in 1:ncol(cov.mat)) {
-    klo[col] <- KL.empirical(cov.mat[, col], h.mat[, col])
+  klo <- vector(length = ncol(covariate_data), mode = "numeric")
+  for (col in 1:ncol(covariate_data)) {
+    klo[col] <- KL.empirical(covariate_data[, col], sample_data[, col])
   }
   return(mean(klo))
 }
@@ -32,16 +32,16 @@ generate_covariate_quantile_matrix <- function(covariate_data, number_of_bins) {
 
 
 #| matrix numeric[2]
-generate_hypercube <- function(covariate_data, number_of_bins) {
+generate_hypercube <- function(covariate_data, quantiles, number_of_bins) {
   stopifnot(is.data.frame(covariate_data))
   stopifnot(is.numeric(number_of_bins))
-  hypercube <- matrix(1, nrow = number_of_bins, ncol = ncol(covariate_data))
+  hypercube <- matrix(0, nrow = number_of_bins, ncol = ncol(covariate_data))
   for (i in 1:nrow(covariate_data)) { # the number of pixels
     for (j in 1:ncol(covariate_data)) { # for each column/covariate
       dd <- covariate_data[i, j]
       for (k in 1:number_of_bins) {  # for each quantile
-        kl <- covarite_quantiles[k, j]
-        ku <- covarite_quantiles[k + 1, j]
+        kl <- quantiles[k, j]
+        ku <- quantiles[k + 1, j]
         if (dd >= kl & dd <= ku) {
           hypercube[k, j] <- hypercube[k, j] + 1
         }

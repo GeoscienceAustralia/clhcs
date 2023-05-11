@@ -64,7 +64,11 @@ covarite_quantiles <- generate_covariate_quantile_matrix(
 
 # covariate data hypercube (this is for test 4)
 # This takes a while to do so only do it once if you can
-covariate_hypercube <- generate_hypercube(covs_df[, start_pos:end_pos], number_of_bins = num_bins)
+covariate_hypercube <- generate_hypercube(
+  covs_df[, start_pos:end_pos],
+  quantiles = covarite_quantiles,
+  number_of_bins = num_bins
+)
 
 #######################################################################
 #How many samples do we need?
