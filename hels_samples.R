@@ -13,6 +13,40 @@
 #         3. Repeat step 5.2 until total number of additonal samples have been allocated.
 ## Created: 18/05/17
 
+
+
+# when we have some samples from outside, and possibly some in the local area, how can we use that prior knowledge, and sample from areas that are not sampled well. 
+
+# Hels algorithm - Spend the sampling budget incrementally starting with the worst areas - monitor improvement (ongoing, almost done)
+#   a) find the quantiles of the covariates in the local area
+#   b) find the hypercube of the covariates in the local area
+#   c) find the hypercube of the covariates in the observations
+#   d) find the mismatch of densities between local area hypercube vs observartions hypercube
+#   e) we take new samples based on the mismatch of densities and add to our observation set
+#   f) the order in which we sample is determined by the mismatch of oservered hypercube desnity to taht of covariate hypercube density
+
+# xxxxxxxxx
+# xxxxxxxxx
+# xxxxxxxxx
+# xxxxxxxxx
+# xxxxxxxxx
+#
+# ooooooooo
+# ooooooooo
+# ooooooooo
+# ooooooooo
+# ooooooooo
+
+# number_of_bins = 25
+# local area each pixel - this is local
+# ----2----------2------3------- 25 of them
+
+# observed data - this is global
+# ----4----------0------4------   25 of them
+
+# Ratio observed/local
+# ----2----------0------0.75---------  25 of them
+
 rm(list = ls())
 source("R/utils.R")
 
@@ -21,7 +55,7 @@ library(raster); library(sp); library(rgdal); library(clhs)
 
 #working directory
 # setwd("Z:/Dropbox/2018/cLHC_samplingPAPER/gitHub/muddles/additional")
-# setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 #load r session with all the necesary objects
 # load("clhs_samp.RData")
@@ -52,14 +86,13 @@ covariate_quantiles <- generate_covariate_quantile_matrix(
 
 # covariate data hypercube
 # This takes a while to do so only do it once if you can
-cov.mat <- generate_hypercube(
+covariate_hypercube <- generate_hypercube(
   covariate_data = covariates_df[, start_pos:end_pos],
   quantiles = covariate_quantiles,
   number_of_bins = num_quantiles
 )
 
-cov.mat[which(cov.mat == 0)] <- 0.000001 # small number so we dont have to deal with zeros
-covDens <- cov.mat / nrow(covariates_df)  # density matrix
+cov_dens <- covariate_hypercube / nrow(covariates_df)  # density matrix
 
 
 # Point data
@@ -72,24 +105,20 @@ observations_df <- observations_df[complete.cases(observations_df),]  # filter o
 
 
 # sample data hypercube
-h.mat <- generate_hypercube(
+observations_hypercube <- generate_hypercube(
   covariate_data = observations_df[, start_pos:end_pos],
   quantiles = covariate_quantiles,
   number_of_bins = num_quantiles
 )
 
-# Replace zeros with a small number so we don't have to deal with zeros
-h.mat[which(h.mat == 0)] <- 0.000001
-
 # Calculate the data density
-datDens <- h.mat / nrow(observations_df)
+dat_dens <- observations_hypercube / nrow(observations_df)
 
 
 #### selecting new samples
 
-rat <- datDens / covDens # ratio of data density and covariate density
+rat <- dat_dens / cov_dens # ratio of data density and covariate density
 or <- order(rat) # rank the index where the biggest discrepancy is
-or
 
 ## indexes of quantiles that are not adequately sampled ie where rat is less than 1
 l1 <- which(rat < 1, arr.ind = T)
@@ -100,32 +129,29 @@ indy <- which(l1[, 3] == or[1])
 rp <- l1[indy, 1]
 rc <- l1[indy, 2]
 rat[rp, rc]
-h.mat[rp, rc]
-cov.mat[rp, rc] # number of pixel (biggest discrepancy)
-datDens[rp, rc] # data density
-covDens[rp, rc] # covariate density
+observations_hypercube[rp, rc]
+covariate_hypercube[rp, rc] # number of pixel (biggest discrepancy)
+dat_dens[rp, rc] # data density
+cov_dens[rp, rc] # covariate density
 
 
-#start from the highest discrepancy then work our way down
+# start from the highest discrepancy then work our way down
 up_samp <- number_additional_samples
 rpos <- 1
 
 # this could be a high fraction indicating that the existing samples are not very representative of the local area
-print(compute_kl_divergence(covariate_data =  cov.mat, sample_data = h.mat))
+print(compute_kl_divergence(covariate_data =  covariate_hypercube, sample_data = observations_hypercube))
 observartions_and_samples_combined <- observations_df
 remaining_covariates_df <- covariates_df
-start_pos_sub_one <- start_pos - 1
 
-print(dim(observartions_and_samples_combined))
-print(dim(remaining_covariates_df))
 
 while (up_samp != 0) {  # while the number of samples to allocate is greater than 0
   indy <- which(l1[, 3] == or[rpos])
   rp <- l1[indy, 1]
   rc <- l1[indy, 2]
 
-  ex <- floor(nrow(observartions_and_samples_combined) * (datDens[rp, rc])) # existing count of samples within the selected quantile
-  eq <- ceiling(nrow(observartions_and_samples_combined) * (covDens[rp, rc])) # number of samples needed to get to equal density between data and covariates
+  ex <- floor(nrow(observartions_and_samples_combined) * (dat_dens[rp, rc])) # existing count of samples within the selected quantile
+  eq <- ceiling(nrow(observartions_and_samples_combined) * (cov_dens[rp, rc])) # number of samples needed to get to equal density between data and covariates
   sn <- eq - ex # number of samples needed
   if (up_samp < sn) { sn <- up_samp } # just so we dont over allocate
 
@@ -133,9 +159,6 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
   # covariate selection
   covL <- covariate_quantiles[rp, rc]
   covU <- covariate_quantiles[rp + 1, rc]
-  print("===============================")
-  print(dim(observartions_and_samples_combined))
-  print(dim(remaining_covariates_df))
   subDat <- remaining_covariates_df[
     remaining_covariates_df[, (start_pos_sub_one + rc)] >= covL &
     remaining_covariates_df[, (start_pos_sub_one + rc)] <= covU,
@@ -157,8 +180,8 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
     quantiles = covariate_quantiles,
     number_of_bins = num_quantiles
   )
-  h.mat.updated[which(h.mat.updated == 0)] <- 0.000001
-  print(compute_kl_divergence(covariate_data = cov.mat, sample_data = h.mat.updated))
+  print("===============================")
+  print(compute_kl_divergence(covariate_data = covariate_hypercube, sample_data = h.mat.updated))
 
   # adjust the while params
   rpos <- rpos + 1
@@ -172,12 +195,12 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
 #density
 h.mat.updated[which(h.mat.updated == 0)] <- 0.000001
 h.mat.updated
-datDens <- h.mat.updated / nrow(observations_df)
+dat_dens <- h.mat.updated / nrow(observations_df)
 
 
 #### check
 
-rat <- datDens / covDens # ratio of data density and covariate density
+rat <- dat_dens / cov_dens # ratio of data density and covariate density
 or <- order(rat) # rank the index where the biggest discrepancy is
 or
 
@@ -194,10 +217,10 @@ indy <- which(l1[, 3] == or[1])
 rp <- l1[indy, 1]
 rc <- l1[indy, 2]
 rat[rp, rc]
-h.mat[rp, rc]
-cov.mat[rp, rc]
-datDens[rp, rc]
-covDens[rp, rc]
+observations_hypercube[rp, rc]
+covariate_hypercube[rp, rc]
+dat_dens[rp, rc]
+cov_dens[rp, rc]
 
 
 ## The following code does not have too much to do with the algorithm
@@ -256,6 +279,3 @@ writeOGR(observartions_and_samples_combined, ".", "wa_test", "ESRI Shapefile", o
 # sum(dat2$sampleNos > 40) / nrow(dat2)
 
 #save.image("clhs_samp.RData") #save R session
-
-
-

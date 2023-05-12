@@ -48,5 +48,7 @@ generate_hypercube <- function(covariate_data, quantiles, number_of_bins) {
       }
     }
   }
+  # Replace zeros with a small number so we don't have to deal with zeros
+  hypercube[which(hypercube == 0)] <- 0.000001
   return(hypercube)
 }
