@@ -27,8 +27,6 @@ library(parallel)
 
 # data set (spatial data covariates)
 covs_df <- read.table("/home/sudipta/repos/clhc_sampling/additional/covs_full.txt", header = T, sep = ",")
-str(covs_df)
-
 covs_df <- covs_df[complete.cases(covs_df),]
 
 # some constants for this data
@@ -57,7 +55,7 @@ pca1.load <- (pca1$rotation)[1:num_cols,]
 num_bins <- 25
 
 # quantile matrix (of the covariate data)
-covarite_quantiles <- generate_covariate_quantile_matrix(
+quantiles <- generate_covariate_quantile_matrix(
   covariate_data = covs_df[, start_pos:end_pos],
   number_of_bins = num_bins
 )
@@ -66,7 +64,7 @@ covarite_quantiles <- generate_covariate_quantile_matrix(
 # This takes a while to do so only do it once if you can
 covariate_hypercube <- generate_hypercube(
   covs_df[, start_pos:end_pos],
-  quantiles = covarite_quantiles,
+  quantiles = quantiles,
   number_of_bins = num_bins
 )
 
@@ -86,10 +84,10 @@ for (w in seq_along(cseq)){ # for every sample number configuration....
 
   #internal loop
   for (j in 1:its) { #Note that this takes quite a while to run to completion
-    repeat {
+    while (TRUE) {
       ss <- clhs(covs_df[, start_pos:end_pos], size = sample_size, progress = T, iter = 1000)
       s.df <- covs_df[ss,]
-      if (sum(duplicated(s.df) | duplicated(s.df[nrow(s.df):1,])[nrow(s.df):1]) < 2) {
+      if (sum(duplicated(s.df)) < 2) {
         break
       }
     }
@@ -182,7 +180,7 @@ for (w in seq_along(cseq)){ # for every sample number configuration....
     ## Fourth test: Kullback-Leibler (KL) divergence
     ####Compare whole study area covariate space with the slected sample
     #sample data hypercube (essentially the same script as for the grid data but just doing it on the sample data)
-    sample_hypercube <- generate_hypercube(covariate_data = s.df[, start_pos:end_pos], number_of_bins = num_bins)
+    sample_hypercube <- generate_hypercube(covariate_data = s.df[, start_pos:end_pos], quantiles = quantiles, number_of_bins = num_bins)
     #Kullback-Leibler (KL) divergence
     klo <- compute_kl_divergence(covariate_hypercube, sample_data = sample_hypercube)
     mat.f[j, 8] <- klo  # value of 0 means no divergence

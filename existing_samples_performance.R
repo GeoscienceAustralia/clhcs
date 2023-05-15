@@ -80,7 +80,7 @@ scores_pca1 = as.data.frame(pca.s$x)
 # plot the first 2 principal components and convex hull
 rand.tr<-tri.mesh(scores_pca1[,1],scores_pca1[,2])
 rand.ch<-convex.hull(rand.tr, plot.it=F) #convex hull
-pr_poly = cbind(x=c(rand.ch$x),y=c(rand.ch$y)) # save the convex hull vertices
+pr_poly <- cbind(x=c(rand.ch$x),y=c(rand.ch$y)) # save the convex hull vertices
 plot(scores_pca1[,1], scores_pca1[,2], xlab="PCA 1", ylab="PCA 2", xlim=c(min(scores_pca1[,1:2]), max(scores_pca1[,1:2])),ylim=c(min(scores_pca1[,1:2]), max(scores_pca1[,1:2])))
 lines(c(rand.ch$x,rand.ch$x[1]), c(rand.ch$y,rand.ch$y[1]),col="red",lwd=1) # draw the convex hull(domain of prediction)
 
