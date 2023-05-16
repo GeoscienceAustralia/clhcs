@@ -43,7 +43,7 @@ calculate_func <- function(i, covariate_df, observations_df, X_dat, cov_mat) {
   dat_dist <- Rfast::mahala(x = X_dat, mu = as.matrix(pix), sigma = cov_mat) #calculate distance of observations to all other pixels
   dat_ndist <- (dat_dist - min_pix) / (max_pix - min_pix) # standardarise
 
-  dat_ndist[datNdist > 1] <- 1 #if the datNdist is greater than 1 that means it datDist is greater than maxDist ##HACK
+  dat_ndist[dat_ndist > 1] <- 1 #if the datNdist is greater than 1 that means it datDist is greater than maxDist ##HACK
   dat_ndist <- 1 - dat_ndist  # Higher values mean more similar
 
   # count how many obs are above a given threshold
@@ -86,7 +86,7 @@ stopCluster(cl)
 covariates_df$sampleNOS <- coobs_classes
 r1 <- rasterFromXYZ(covariates_df[, c("X_REF", "Y_REF", "sampleNOS")])
 plot(r1)
-writeRaster(r1, filename = "./global_local_sampleNos_new.tif", format = "GTiff", overwrite = TRUE)
+writeRaster(r1, filename = "./global_local_coobs.tif", format = "GTiff", overwrite = TRUE)
 
 # Tell all slaves to close down, and exit the program
 # mpi.close.Rslaves(dellog = FALSE)
