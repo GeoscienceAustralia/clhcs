@@ -50,7 +50,7 @@ observations_df <- read.table("/home/sudipta/repos/clhc_sampling/additional/inte
 # insert cellNos column used later
 observations_df <- cbind(observations_df[1:2], cellNos = 0, type='existing', observations_df[, 3:ncol(observations_df)])
 observations_df <- observations_df[complete.cases(observations_df),]  # filter out any null rows
-
+observations_df <- unique(observations_df)
 
 num_quantiles <- 25
 
@@ -65,20 +65,19 @@ covariate_quantiles <- generate_covariate_quantile_matrix(
 # This takes a while to do so only do it once if you can
 covariate_hypercube <- generate_hypercube(
   covariate_data = covariates_df[, start_pos:end_pos],
-  quantiles = covariate_quantiles,
-  number_of_bins = num_quantiles
+  quantiles = covariate_quantiles
 )
 
 # sample data hypercube
 observations_hypercube <- generate_hypercube(
   covariate_data = observations_df[, start_pos:end_pos],
-  quantiles = covariate_quantiles,
-  number_of_bins = num_quantiles
+  quantiles = covariate_quantiles
 )
 
 
 # this could be a high fraction indicating that the existing samples are not very representative of the local area
 print(compute_kl_divergence(covariate_data =  covariate_hypercube, sample_data = observations_hypercube))
+print(compute_kl_divergence(covariate_data =  covariate_hypercube_vec, sample_data = observations_hypercube))
 
 old_and_samples_combined <- observations_df
 
@@ -94,24 +93,27 @@ number_additional_samples <- 110
 up_samp <- number_additional_samples
 pass_no <- 0
 
-
 while (up_samp != 0) {  # while the number of samples to allocate is greater than 0
   pass_no <- pass_no + 1
+  print(paste("============PASS NO ==========>>>>>>>>>>>>: ", pass_no))
   sn <- 10 # 10 at a time
   if (up_samp < sn) { sn <- up_samp } # just so we dont over allocate
   total_samples_for_this_loop <- sn + num_current_observations
   # covariate selection
-  training <- clhs(
-    universe_df[, start_pos:end_pos],
-    size = total_samples_for_this_loop,
-    progress = T, iter = 1000,
-    use.cpp = TRUE,
-    must.include = must_include
-  )
+  while (TRUE) {   # loop untill all training indices are unique
+    training <- clhs(
+      universe_df[, start_pos:end_pos],
+      size = total_samples_for_this_loop,
+      progress = T, iter = 1000,
+      use.cpp = TRUE,
+      must.include = must_include
+    )
+    if (!any(duplicated(training))) { break }
+    print("===========>>>>clhs returned duplicate samples. Retrying ......")
+  }
   # original + all new observations
   old_and_samples_combined <- rbind(old_and_samples_combined, universe_df[training[!(training %in% must_include)],])
   old_and_samples_combined[old_and_samples_combined$type == 'covariate', "type"] <- paste("clhc_sample_pass", pass_no, sep = "_")
-
   # update must_include and num_training_observations
   must_include <- training
   num_current_observations <- total_samples_for_this_loop
@@ -122,18 +124,18 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
   # Append new data to sampling dataframe
   observations_hypercube_updated <- generate_hypercube(
     covariate_data = old_and_samples_combined[, start_pos:end_pos],
-    quantiles = covariate_quantiles,
-    number_of_bins = num_quantiles
+    quantiles = covariate_quantiles
   )
-  print(paste(pass_no, "============number of samples ==================="))
 
   # adjust the while params
   up_samp <- up_samp - sn
-  print(sn)
-  print(up_samp)
-  print(paste("length(training): ", length(training)))
   print(table(old_and_samples_combined['type']))
-  print(compute_kl_divergence(covariate_data = covariate_hypercube, sample_data = observations_hypercube_updated))
+  print(
+    paste(
+    "KL Divergence with ",  total_samples_for_this_loop - num_old_observations, " additional samples",
+    compute_kl_divergence(covariate_data = covariate_hypercube, sample_data = observations_hypercube_updated)
+    )
+  )
 }
 
 # Specify the different surveys (original and additional)
@@ -149,38 +151,10 @@ proj4string(old_and_samples_combined) <- CRS("+init=epsg:3577")  # Australian al
 writeOGR(old_and_samples_combined, ".", "wa_test", "ESRI Shapefile", overwrite_layer = T)
 
 
-# The following raster has been derived by comparing the similarity between the mulivariate values of the grids and observed data
-# Low numbers mean that there are not many data points showing similarity to the grid cell location. High mumber means quite a few
-# observations are similar
-
-#raster extraction
-#covariates
-# files<- list.files(path= getwd(), pattern = ".tif$", full.names = TRUE)
-# files
-# r1<- raster(files[1])
-# r1
-# plot(r1)
-
-# DSM_data2<- extract(r1, dat, sp= 1, method = "simple")
-
-# write table to file
-# write.table(as.data.frame(DSM_data2), "HELS_dat.txt", sep = ",", col.names = T)
-
-
-# Doing some summary statistics between the raster grid values and the sample sites for both original and additional data
-# DSM_data2$sampleNos
-# dat1<- DSM_data2[DSM_data2$survey == "original", ]
-# sum(dat1$sampleNos >= 0 & dat1$sampleNos <= 5) / nrow(dat1)
-# sum(dat1$sampleNos > 5 & dat1$sampleNos <= 10) / nrow(dat1)
-# sum(dat1$sampleNos > 10 & dat1$sampleNos <= 20) / nrow(dat1)
-# sum(dat1$sampleNos > 20 & dat1$sampleNos <= 40) / nrow(dat1)
-# sum(dat1$sampleNos > 40) / nrow(dat1)
-#
-# dat2<- DSM_data2[DSM_data2$survey !=1, ]
-# sum(dat2$sampleNos >= 0 & dat2$sampleNos <= 5) / nrow(dat2)
-# sum(dat2$sampleNos > 5 & dat2$sampleNos <= 10) / nrow(dat2)
-# sum(dat2$sampleNos > 10 & dat2$sampleNos <= 20) / nrow(dat2)
-# sum(dat2$sampleNos > 20 & dat2$sampleNos <= 40) / nrow(dat2)
-# sum(dat2$sampleNos > 40) / nrow(dat2)
-
-#save.image("clhs_samp.RData") #save R session
+# composite quantiles raster output
+composite <- composite_from_quantiles(covariates_df[, start_pos: end_pos], quantiles = covariate_quantiles)
+composite_sum <- rowSums(composite)
+composite_df <- cbind(covariates_df[, c("X_REF", "Y_REF")], composite_sum=composite_sum)
+r1 <- rasterFromXYZ(composite_df[, c("X_REF", "Y_REF", "composite_sum")])
+plot(r1)
+writeRaster(r1, filename = "./compositve_quantiles.tif", format = "GTiff", overwrite = TRUE)

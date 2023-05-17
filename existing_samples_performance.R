@@ -52,16 +52,14 @@ quantiles <- generate_covariate_quantile_matrix(
 # Hypercube of population
 cov_hypercube <- generate_hypercube(
   covariate_data = covariates_df[, start_pos:end_pos],
-  quantiles = quantiles,
-  number_of_bins = num_bins
+  quantiles = quantiles
 )
 
 ####Compare whole study area covariate space with the selected sample
 #sample data hypercube (essentially the same script as for the grid data but just doing it on the sample data)
 observations_hypercube <- generate_hypercube(
   covariate_data = observations_df[, start_pos:end_pos],
-  quantiles = quantiles,
-  number_of_bins = num_bins
+  quantiles = quantiles
 )
 
 #Kullback-Leibler (KL) divergence

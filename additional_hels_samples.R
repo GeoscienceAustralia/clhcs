@@ -85,8 +85,7 @@ covariate_quantiles <- generate_covariate_quantile_matrix(
 # This takes a while to do so only do it once if you can
 covariate_hypercube <- generate_hypercube(
   covariate_data = covariates_df[, start_pos:end_pos],
-  quantiles = covariate_quantiles,
-  number_of_bins = num_quantiles
+  quantiles = covariate_quantiles
 )
 
 cov_dens <- covariate_hypercube / nrow(covariates_df)  # density matrix
@@ -104,8 +103,7 @@ observations_df <- observations_df[complete.cases(observations_df),]  # filter o
 # sample data hypercube
 observations_hypercube <- generate_hypercube(
   covariate_data = observations_df[, start_pos:end_pos],
-  quantiles = covariate_quantiles,
-  number_of_bins = num_quantiles
+  quantiles = covariate_quantiles
 )
 
 # Calculate the data density
@@ -181,8 +179,7 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
   observartions_and_samples_combined <- rbind(observartions_and_samples_combined, subDat2)
   observations_hypercube_updated <- generate_hypercube(
     covariate_data = observartions_and_samples_combined[, start_pos:end_pos],
-    quantiles = covariate_quantiles,
-    number_of_bins = num_quantiles
+    quantiles = covariate_quantiles
   )
   print("============number of samples ===================")
 

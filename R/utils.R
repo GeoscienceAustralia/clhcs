@@ -20,7 +20,7 @@ generate_covariate_quantile_matrix <- function(covariate_data, number_of_bins) {
 
   quantiles <- matrix(NA, nrow = (number_of_bins + 1), ncol = ncol(covariate_data))
   j <- 1
-  for (i in 1:ncol(covariate_data)) { # note the index start here
+  for (i in 1:ncol(covariate_data)) {
     # get a quantile matrix together of the covariates
     cov_range <- max(covariate_data[, i]) - min(covariate_data[, i])
     cov_step <- cov_range / number_of_bins
@@ -32,9 +32,10 @@ generate_covariate_quantile_matrix <- function(covariate_data, number_of_bins) {
 
 
 #| matrix numeric[2]
-generate_hypercube <- function(covariate_data, quantiles, number_of_bins) {
+generate_hypercube <- function(covariate_data, quantiles) {
   stopifnot(is.data.frame(covariate_data))
-  stopifnot(is.numeric(number_of_bins))
+  stopifnot(ncol(covariate_data) == ncol(quantiles))
+  number_of_bins <- nrow(quantiles) - 1
   hypercube <- matrix(0, nrow = number_of_bins, ncol = ncol(covariate_data))
   for (i in 1:nrow(covariate_data)) { # the number of pixels
     for (j in 1:ncol(covariate_data)) { # for each column/covariate
@@ -50,5 +51,44 @@ generate_hypercube <- function(covariate_data, quantiles, number_of_bins) {
   }
   # Replace zeros with a small number so we don't have to deal with zeros
   hypercube[which(hypercube == 0)] <- 0.000001
+  return(hypercube)
+}
+
+generate_hypercube_vec <- function(covariate_data, quantiles) {
+    stopifnot(is.data.frame(covariate_data))
+    stopifnot(ncol(covariate_data) == ncol(quantiles))
+    number_of_bins <- nrow(quantiles) - 1
+    hypercube <- matrix(0, nrow = number_of_bins, ncol = ncol(covariate_data))
+    for (i in 1:nrow(covariate_data)) { # the number of pixels
+      for (j in 1:ncol(covariate_data)) { # for each column/covariate
+        dd <- covariate_data[i, j]
+        print(paste(i, j, dd))
+        hypercube[findInterval(dd, quantiles[, j]), j] <- hypercube[findInterval(dd, quantiles[, j]), j] + 1
+      }
+    }
+
+    # Replace zeros with a small number so we don't have to deal with zeros
+    hypercube[which(hypercube == 0)] <- 0.000001
+    return(hypercube)
+}
+
+
+composite_from_quantiles <- function(covariate_data, quantiles) {
+  stopifnot(is.data.frame(covariate_data))
+  stopifnot(ncol(covariate_data) == ncol(quantiles))
+  number_of_bins <- nrow(quantiles) - 1
+  hypercube <- matrix(0, nrow = nrow(covariate_data), ncol = ncol(covariate_data))
+  for (i in 1:nrow(covariate_data)) { # the number of pixels
+    for (j in 1:ncol(covariate_data)) { # for each column/covariate
+      dd <- covariate_data[i, j]
+      for (k in 1:number_of_bins) {  # for each quantile
+        kl <- quantiles[k, j]
+        ku <- quantiles[k + 1, j]
+        if (dd >= kl & dd <= ku) {
+          hypercube[i, j] <- k
+        }
+      }
+    }
+  }
   return(hypercube)
 }
