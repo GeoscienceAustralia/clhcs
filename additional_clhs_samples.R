@@ -63,13 +63,13 @@ covariate_quantiles <- generate_covariate_quantile_matrix(
 
 # covariate data hypercube
 # This takes a while to do so only do it once if you can
-covariate_hypercube <- generate_hypercube(
+covariate_hypercube <- generate_hypercube_vec(
   covariate_data = covariates_df[, start_pos:end_pos],
   quantiles = covariate_quantiles
 )
 
 # sample data hypercube
-observations_hypercube <- generate_hypercube(
+observations_hypercube <- generate_hypercube_vec(
   covariate_data = observations_df[, start_pos:end_pos],
   quantiles = covariate_quantiles
 )
@@ -77,7 +77,6 @@ observations_hypercube <- generate_hypercube(
 
 # this could be a high fraction indicating that the existing samples are not very representative of the local area
 print(compute_kl_divergence(covariate_data =  covariate_hypercube, sample_data = observations_hypercube))
-print(compute_kl_divergence(covariate_data =  covariate_hypercube_vec, sample_data = observations_hypercube))
 
 old_and_samples_combined <- observations_df
 
@@ -122,7 +121,7 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
   # remaining_covariates_df <- remaining_covariates_df[!(remaining_covariates_df$cellNos %in% subDat2$cellNos),]
 
   # Append new data to sampling dataframe
-  observations_hypercube_updated <- generate_hypercube(
+  observations_hypercube_updated <- generate_hypercube_vec(
     covariate_data = old_and_samples_combined[, start_pos:end_pos],
     quantiles = covariate_quantiles
   )

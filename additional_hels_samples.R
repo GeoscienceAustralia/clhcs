@@ -83,7 +83,7 @@ covariate_quantiles <- generate_covariate_quantile_matrix(
 
 # covariate data hypercube
 # This takes a while to do so only do it once if you can
-covariate_hypercube <- generate_hypercube(
+covariate_hypercube <- generate_hypercube_vec(
   covariate_data = covariates_df[, start_pos:end_pos],
   quantiles = covariate_quantiles
 )
@@ -101,7 +101,7 @@ observations_df <- observations_df[complete.cases(observations_df),]  # filter o
 
 
 # sample data hypercube
-observations_hypercube <- generate_hypercube(
+observations_hypercube <- generate_hypercube_vec(
   covariate_data = observations_df[, start_pos:end_pos],
   quantiles = covariate_quantiles
 )
@@ -177,7 +177,7 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
   # Append new data to sampling dataframe
   # previous_data_length = nrow(observations_df)
   observartions_and_samples_combined <- rbind(observartions_and_samples_combined, subDat2)
-  observations_hypercube_updated <- generate_hypercube(
+  observations_hypercube_updated <- generate_hypercube_vec(
     covariate_data = observartions_and_samples_combined[, start_pos:end_pos],
     quantiles = covariate_quantiles
   )

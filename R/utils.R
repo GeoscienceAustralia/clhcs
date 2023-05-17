@@ -17,15 +17,13 @@ generate_covariate_quantile_matrix <- function(covariate_data, number_of_bins) {
   # Check that the input arguments are valid
   stopifnot(is.data.frame(covariate_data))
   stopifnot(is.numeric(number_of_bins))
-
+  tolerance <- 1e-10
   quantiles <- matrix(NA, nrow = (number_of_bins + 1), ncol = ncol(covariate_data))
-  j <- 1
   for (i in 1:ncol(covariate_data)) {
     # get a quantile matrix together of the covariates
-    cov_range <- max(covariate_data[, i]) - min(covariate_data[, i])
+    cov_range <- max(covariate_data[, i]) - min(covariate_data[, i]) + 2*tolerance
     cov_step <- cov_range / number_of_bins
-    quantiles[, j] <- seq(min(covariate_data[, i]), to = max(covariate_data[, i]), by = cov_step)
-    j <- j + 1
+    quantiles[, i] <- seq(min(covariate_data[, i]) - tolerance, to = max(covariate_data[, i]) + tolerance, by = cov_step)
   }
   return(quantiles)
 }
@@ -62,7 +60,6 @@ generate_hypercube_vec <- function(covariate_data, quantiles) {
     for (i in 1:nrow(covariate_data)) { # the number of pixels
       for (j in 1:ncol(covariate_data)) { # for each column/covariate
         dd <- covariate_data[i, j]
-        print(paste(i, j, dd))
         hypercube[findInterval(dd, quantiles[, j]), j] <- hypercube[findInterval(dd, quantiles[, j]), j] + 1
       }
     }

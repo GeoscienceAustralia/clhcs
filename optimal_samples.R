@@ -62,7 +62,7 @@ quantiles <- generate_covariate_quantile_matrix(
 
 # covariate data hypercube (this is for test 4)
 # This takes a while to do so only do it once if you can
-covariate_hypercube <- generate_hypercube(
+covariate_hypercube <- generate_hypercube_vec(
   covs_df[, start_pos:end_pos],
   quantiles = quantiles
 )
@@ -179,7 +179,7 @@ for (w in seq_along(cseq)){ # for every sample number configuration....
     ## Fourth test: Kullback-Leibler (KL) divergence
     ####Compare whole study area covariate space with the slected sample
     #sample data hypercube (essentially the same script as for the grid data but just doing it on the sample data)
-    sample_hypercube <- generate_hypercube(covariate_data = s.df[, start_pos:end_pos], quantiles = quantiles)
+    sample_hypercube <- generate_hypercube_vec(covariate_data = s.df[, start_pos:end_pos], quantiles = quantiles)
     #Kullback-Leibler (KL) divergence
     klo <- compute_kl_divergence(covariate_hypercube, sample_data = sample_hypercube)
     mat.f[j, 8] <- klo  # value of 0 means no divergence

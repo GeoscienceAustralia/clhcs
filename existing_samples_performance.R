@@ -50,14 +50,14 @@ quantiles <- generate_covariate_quantile_matrix(
 )
 
 # Hypercube of population
-cov_hypercube <- generate_hypercube(
+cov_hypercube <- generate_hypercube_vec(
   covariate_data = covariates_df[, start_pos:end_pos],
   quantiles = quantiles
 )
 
 ####Compare whole study area covariate space with the selected sample
 #sample data hypercube (essentially the same script as for the grid data but just doing it on the sample data)
-observations_hypercube <- generate_hypercube(
+observations_hypercube <- generate_hypercube_vec(
   covariate_data = observations_df[, start_pos:end_pos],
   quantiles = quantiles
 )
