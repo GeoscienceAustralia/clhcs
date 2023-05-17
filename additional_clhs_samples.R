@@ -153,11 +153,12 @@ writeOGR(old_and_samples_combined, ".", "wa_test", "ESRI Shapefile", overwrite_l
 # composite quantiles raster output
 composite <- composite_from_quantiles(covariates_df[, start_pos: end_pos], quantiles = covariate_quantiles)
 raster <- rasterFromXYZ(cbind(covariates_df[, c("X_REF", "Y_REF")], composite))
+proj4string(raster) <- CRS("+init=epsg:3577")  # Australian albers
 writeRaster(raster, filename = "./compositve_quantiles.tif", format = "GTiff", overwrite = TRUE)
 
 composite_sum <- rowSums(composite)
 r1 <- rasterFromXYZ(cbind(covariates_df[, c("X_REF", "Y_REF")], composite_sum=composite_sum))
-
+proj4string(r1) <- CRS("+init=epsg:3577")  # Australian albers
 plot(r1)
 writeRaster(r1, filename = "./compositve_quantiles_sum.tif", format = "GTiff", overwrite = TRUE)
 
