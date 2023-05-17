@@ -152,8 +152,12 @@ writeOGR(old_and_samples_combined, ".", "wa_test", "ESRI Shapefile", overwrite_l
 
 # composite quantiles raster output
 composite <- composite_from_quantiles(covariates_df[, start_pos: end_pos], quantiles = covariate_quantiles)
+raster <- rasterFromXYZ(cbind(covariates_df[, c("X_REF", "Y_REF")], composite))
+writeRaster(raster, filename = "./compositve_quantiles.tif", format = "GTiff", overwrite = TRUE)
+
 composite_sum <- rowSums(composite)
-composite_df <- cbind(covariates_df[, c("X_REF", "Y_REF")], composite_sum=composite_sum)
-r1 <- rasterFromXYZ(composite_df[, c("X_REF", "Y_REF", "composite_sum")])
+r1 <- rasterFromXYZ(cbind(covariates_df[, c("X_REF", "Y_REF")], composite_sum=composite_sum))
+
 plot(r1)
-writeRaster(r1, filename = "./compositve_quantiles.tif", format = "GTiff", overwrite = TRUE)
+writeRaster(r1, filename = "./compositve_quantiles_sum.tif", format = "GTiff", overwrite = TRUE)
+
