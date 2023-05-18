@@ -24,6 +24,7 @@ library(raster); library(sp); library(rgdal); library(clhs)
 #load r session with all the necesary objects
 # load("clhs_samp.RData")
 
+coord_col_names <-  c("X_REF", "Y_REF")
 
 #load raster data
 # load(file="HV_coobs.rda")
@@ -32,7 +33,7 @@ covariates_df <- covariates_df[complete.cases(covariates_df),]  # filter out any
 
 # insert cellNos column used later for tracking rows
 covariates_df <- cbind(
-  covariates_df[1:2],
+  covariates_df[, 1:2],
   cellNos = seq(1:nrow(covariates_df)),
   type='covariate',
   covariates_df[, 3:ncol(covariates_df)]
@@ -52,7 +53,7 @@ observations_df <- cbind(observations_df[1:2], cellNos = 0, type='existing', obs
 observations_df <- observations_df[complete.cases(observations_df),]  # filter out any null rows
 observations_df <- unique(observations_df)
 
-num_quantiles <- 25
+num_quantiles <- 25L
 
 
 # quantile matrix (of the covariate data)
@@ -69,7 +70,9 @@ covariate_hypercube <- generate_hypercube_vec(
 )
 
 # sample data hypercube
-observations_hypercube <- generate_hypercube_vec(
+# note observations can be outside the quantiles of the covariates - do we cannot use the vectorised version
+# of this funcion
+observations_hypercube <- generate_hypercube(
   covariate_data = observations_df[, start_pos:end_pos],
   quantiles = covariate_quantiles
 )
@@ -78,7 +81,8 @@ observations_hypercube <- generate_hypercube_vec(
 # this could be a high fraction indicating that the existing samples are not very representative of the local area
 print(compute_kl_divergence(covariate_data =  covariate_hypercube, sample_data = observations_hypercube))
 
-old_and_samples_combined <- observations_df
+# initially just contains the existing samples
+existing_and_clhs_samples_df <- observations_df
 
 # TODO: in universe_df it will be best to remove the pixels corresponding to the observations_df from covariates_df
 universe_df <- rbind(observations_df, covariates_df)
@@ -111,8 +115,8 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
     print("===========>>>>clhs returned duplicate samples. Retrying ......")
   }
   # original + all new observations
-  old_and_samples_combined <- rbind(old_and_samples_combined, universe_df[training[!(training %in% must_include)],])
-  old_and_samples_combined[old_and_samples_combined$type == 'covariate', "type"] <- paste("clhc_sample_pass", pass_no, sep = "_")
+  existing_and_clhs_samples_df <- rbind(existing_and_clhs_samples_df, universe_df[training[!(training %in% must_include)],])
+  existing_and_clhs_samples_df[existing_and_clhs_samples_df$type == 'covariate', "type"] <- paste("clhc_sample_pass", pass_no, sep = "_")
   # update must_include and num_training_observations
   must_include <- training
   num_current_observations <- total_samples_for_this_loop
@@ -121,14 +125,14 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
   # remaining_covariates_df <- remaining_covariates_df[!(remaining_covariates_df$cellNos %in% subDat2$cellNos),]
 
   # Append new data to sampling dataframe
-  observations_hypercube_updated <- generate_hypercube_vec(
-    covariate_data = old_and_samples_combined[, start_pos:end_pos],
+  observations_hypercube_updated <- generate_hypercube(
+    covariate_data = existing_and_clhs_samples_df[, start_pos:end_pos],
     quantiles = covariate_quantiles
   )
 
   # adjust the while params
   up_samp <- up_samp - sn
-  print(table(old_and_samples_combined['type']))
+  print(table(existing_and_clhs_samples_df['type']))
   print(
     paste(
     "KL Divergence with ",  total_samples_for_this_loop - num_old_observations, " additional samples",
@@ -137,28 +141,56 @@ while (up_samp != 0) {  # while the number of samples to allocate is greater tha
   )
 }
 
-# Specify the different surveys (original and additional)
+
+existing_and_clhs_samples_spatial_df <- existing_and_clhs_samples_df
+
 
 # Spatial points
-coordinates(old_and_samples_combined) <- ~X_REF + Y_REF
-
+coordinates(existing_and_clhs_samples_spatial_df) <- ~X_REF + Y_REF
 # Coordinate reference systems
-proj4string(old_and_samples_combined) <- CRS("+init=epsg:3577")  # Australian albers
-
-
+proj4string(existing_and_clhs_samples_spatial_df) <- CRS("+init=epsg:3577")  # Australian albers
 ## Write point data to shapefile
-writeOGR(old_and_samples_combined, ".", "wa_test", "ESRI Shapefile", overwrite_layer = T)
+writeOGR(existing_and_clhs_samples_spatial_df, ".", "wa_test", "ESRI Shapefile", overwrite_layer = T)
 
 
 # composite quantiles raster output
 composite <- composite_from_quantiles(covariates_df[, start_pos: end_pos], quantiles = covariate_quantiles)
 raster <- rasterFromXYZ(cbind(covariates_df[, c("X_REF", "Y_REF")], composite))
 proj4string(raster) <- CRS("+init=epsg:3577")  # Australian albers
-writeRaster(raster, filename = "./compositve_quantiles.tif", format = "GTiff", overwrite = TRUE)
+writeRaster(raster, filename = "./composite_quantiles.tif", format = "GTiff", overwrite = TRUE)
 
 composite_sum <- rowSums(composite)
 r1 <- rasterFromXYZ(cbind(covariates_df[, c("X_REF", "Y_REF")], composite_sum=composite_sum))
 proj4string(r1) <- CRS("+init=epsg:3577")  # Australian albers
 plot(r1)
-writeRaster(r1, filename = "./compositve_quantiles_sum.tif", format = "GTiff", overwrite = TRUE)
+writeRaster(r1, filename = "./composite_quantiles_sum.tif", format = "GTiff", overwrite = TRUE)
 
+# create a shapefile with the same covariate values as those of LHC samples
+composite_with_coords <- as.matrix(cbind(covariates_df[, c("X_REF", "Y_REF")], composite))
+
+classified_sample_quantiles <- matrix(0, nrow = 0, ncol=(2 + (end_pos-start_pos + 1) + 1))
+
+for (i in 1:nrow(clhc_samples_df)) {
+  this_sample_quantiles <- composite_with_coords
+  for (j in seq(start_pos:end_pos)) {
+    dd <- clhc_samples_df[i, start_pos+j-1]
+    q <- findInterval(dd, covariate_quantiles[, j])
+    this_sample_quantiles <- this_sample_quantiles[this_sample_quantiles[, j+2]==q, ]  # + 2 for the coords
+    this_sample_quantiles <- matrix(this_sample_quantiles, ncol = 5)
+  }
+  classified_sample_quantiles <- rbind(
+    classified_sample_quantiles,
+    cbind(this_sample_quantiles, i)
+  )
+}
+
+classified_sample_quantiles_df <- as.data.frame(
+  classified_sample_quantiles
+)
+colnames(classified_sample_quantiles_df) <- c(coord_col_names, names(covariates_df[, start_pos:end_pos]), "clhs_class")
+
+coordinates(classified_sample_quantiles_df) <- ~X_REF + Y_REF
+# Coordinate reference systems
+proj4string(classified_sample_quantiles_df) <- CRS("+init=epsg:3577")  # Australian albers
+## Write point data to shapefile
+writeOGR(classified_sample_quantiles_df, ".", "clhs_samples", "ESRI Shapefile", overwrite_layer = T)

@@ -17,7 +17,7 @@ generate_covariate_quantile_matrix <- function(covariate_data, number_of_bins) {
   # Check that the input arguments are valid
   stopifnot(is.data.frame(covariate_data))
   stopifnot(is.numeric(number_of_bins))
-  tolerance <- 1e-10  # this little bit of tolerance makes sure the covariate points don't fall outside when compared
+  tolerance <- 1e-6  # this little bit of tolerance makes sure the covariate points don't fall outside when compared
   quantiles <- matrix(NA, nrow = (number_of_bins + 1), ncol = ncol(covariate_data))
   for (i in 1:ncol(covariate_data)) {
     # get a quantile matrix together of the covariates
