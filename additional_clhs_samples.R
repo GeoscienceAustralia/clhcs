@@ -16,7 +16,7 @@ rm(list = ls())
 source("R/utils.R")
 
 # Libraries
-library(raster); library(sp); library(rgdal); library(clhs)
+library(raster); library(sp); library(rgdal); library(clhs); library(dplyr)
 
 #working directory
 # setwd(dirname(rstudioapi::getSourceEditorContext()$path))
@@ -33,23 +33,22 @@ covariates_df <- covariates_df[complete.cases(covariates_df),]  # filter out any
 
 # insert cellNos column used later for tracking rows
 covariates_df <- cbind(
-  covariates_df[, 1:2],
-  cellNos = seq(1:nrow(covariates_df)),
+  covariates_df[, coord_col_names],
   type='covariate',
   covariates_df[, 3:ncol(covariates_df)]
 )
 
 
 # Define some constants for convenience
-start_pos <- 5
-end_pos <- 7
+start_pos <- 4L
+end_pos <- 6L
 
 # Point data
 # for us this contains the global observation sites + their itnerseteced covaraiate values
 observations_df <- read.table("/home/sudipta/repos/clhc_sampling/additional/intersected_covs.txt", header = T, sep = ",")
 
 # insert cellNos column used later
-observations_df <- cbind(observations_df[1:2], cellNos = 0, type='existing', observations_df[, 3:ncol(observations_df)])
+observations_df <- cbind(observations_df[1:2], type='existing', observations_df[, 3:ncol(observations_df)])
 observations_df <- observations_df[complete.cases(observations_df),]  # filter out any null rows
 observations_df <- unique(observations_df)
 
@@ -92,7 +91,7 @@ must_include <- 1:num_old_observations
 
 
 # Number of addtional samples to take
-number_additional_samples <- 110
+number_additional_samples <- 110L
 up_samp <- number_additional_samples
 pass_no <- 0
 
@@ -166,8 +165,10 @@ plot(r1)
 writeRaster(r1, filename = "./composite_quantiles_sum.tif", format = "GTiff", overwrite = TRUE)
 
 # create a shapefile with the same covariate values as those of LHC samples
+clhc_samples_df <- existing_and_clhs_samples_df %>% dplyr::filter(type != 'existing')
 composite_with_coords <- as.matrix(cbind(covariates_df[, c("X_REF", "Y_REF")], composite))
 
+# 2 coordinates + (end_pos-start_pos + 1) covaraites + 1 for the class
 classified_sample_quantiles <- matrix(0, nrow = 0, ncol=(2 + (end_pos-start_pos + 1) + 1))
 
 for (i in 1:nrow(clhc_samples_df)) {
@@ -176,7 +177,7 @@ for (i in 1:nrow(clhc_samples_df)) {
     dd <- clhc_samples_df[i, start_pos+j-1]
     q <- findInterval(dd, covariate_quantiles[, j])
     this_sample_quantiles <- this_sample_quantiles[this_sample_quantiles[, j+2]==q, ]  # + 2 for the coords
-    this_sample_quantiles <- matrix(this_sample_quantiles, ncol = 5)
+    this_sample_quantiles <- matrix(this_sample_quantiles, ncol = 2 + (end_pos-start_pos + 1))
   }
   classified_sample_quantiles <- rbind(
     classified_sample_quantiles,
