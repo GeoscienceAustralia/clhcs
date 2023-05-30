@@ -26,7 +26,7 @@ library(entropy)
 library(parallel)
 
 # data set (spatial data covariates)
-covs_df <- read.table("/home/sudipta/repos/clhc_sampling/additional/covs_full.txt", header = T, sep = ",")
+covs_df <- read.table("/home/sudipta/repos/clhcs/LHC_2023_05_29/covs_full.txt", header = T, sep = ",")
 covs_df <- covs_df[complete.cases(covs_df),]
 
 # some constants for this data
@@ -148,23 +148,25 @@ for (w in seq_along(cseq)){ # for every sample number configuration....
     #   str(df.q2)
     # }
     # mat.f[j,5] = sqrt(sum((df.q1 - df.q2)^2))
-
-    df.q2.1 <- quantile(s.df$G_K1, probs = seq(0, 1, 0.25), names = F, type = 7)
-    df.q1.1 <- quantile(covs_df$G_K1, probs = seq(0, 1, 0.25), names = F, type = 7)
+    stopifnot("G_Rat_Th1" %in% names(s.df))
+    stopifnot("Grav_Vet1" %in% names(s.df))
+    stopifnot("Mag_VRTP1" %in% names(s.df))
+    df.q2.1 <- quantile(s.df$G_Rat_Th1, probs = seq(0, 1, 0.25), names = F, type = 7)
+    df.q1.1 <- quantile(covs_df$G_Rat_Th1, probs = seq(0, 1, 0.25), names = F, type = 7)
     mat.f[j, 2] <- sqrt((df.q1.1[1] - df.q2.1[1])^2 +
                           (df.q1.1[2] - df.q2.1[2])^2 +
                           (df.q1.1[3] - df.q2.1[3])^2 +
                           (df.q1.1[4] - df.q2.1[4])^2)
 
-    df.q2.2 <- quantile(s.df$T_DEM_S1, probs = seq(0, 1, 0.25), names = F, type = 7)
-    df.q1.2 <- quantile(covs_df$T_DEM_S1, probs = seq(0, 1, 0.25), names = F, type = 7)
+    df.q2.2 <- quantile(s.df$Grav_Vet1, probs = seq(0, 1, 0.25), names = F, type = 7)
+    df.q1.2 <- quantile(covs_df$Grav_Vet1, probs = seq(0, 1, 0.25), names = F, type = 7)
     mat.f[j, 3] <- sqrt((df.q1.2[1] - df.q2.2[1])^2 +
                           (df.q1.2[2] - df.q2.2[2])^2 +
                           (df.q1.2[3] - df.q2.2[3])^2 +
                           (df.q1.2[4] - df.q2.2[4])^2)
 
-    df.q2.3 <- quantile(s.df$T_Saga_W1, probs = seq(0, 1, 0.25), names = F, type = 7)
-    df.q1.3 <- quantile(covs_df$T_Saga_W1, probs = seq(0, 1, 0.25), names = F, type = 7)
+    df.q2.3 <- quantile(s.df$Mag_VRTP1, probs = seq(0, 1, 0.25), names = F, type = 7)
+    df.q1.3 <- quantile(covs_df$Mag_VRTP1, probs = seq(0, 1, 0.25), names = F, type = 7)
     mat.f[j, 4] <- sqrt((df.q1.3[1] - df.q2.3[1])^2 +
                           (df.q1.3[2] - df.q2.3[2])^2 +
                           (df.q1.3[3] - df.q2.3[3])^2 +
@@ -282,7 +284,7 @@ normalized <- 1 - (jj - min(jj)) / (max(jj) - min(jj))
 x <- xx
 y <- normalized
 
-plot(x, y, xlab = "sample number", ylab = "normalised PIP", type = "l", lwd = 2)          # Initial plot of the data
+plot(x, y, xlab = "sample number", ylab = "normalised Points in Polygon", type = "l", lwd = 2)          # Initial plot of the data
 
 x1 <- c(-1, 500); y1 <- c(0.95, 0.95)
 lines(x1, y1, lwd = 2, col = "red")

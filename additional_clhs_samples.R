@@ -26,9 +26,15 @@ library(raster); library(sp); library(rgdal); library(clhs); library(dplyr)
 
 coord_col_names <-  c("X_REF", "Y_REF")
 
+
+# input and output directories
+
+input_dir <- "/home/sudipta/repos/clhcs/LHC_2023_05_29"
+output_dir <- "/home/sudipta/repos/clhcs/LHC_2023_05_29"
+
 #load raster data
 # load(file="HV_coobs.rda")
-covariates_df <- read.table("/home/sudipta/repos/clhc_sampling/additional/covs_full.txt", header = T, sep = ",") # change directory as appropriate
+covariates_df <- read.table(file.path(input_dir, "covs_full.txt"), header = T, sep = ",") # change directory as appropriate
 covariates_df <- covariates_df[complete.cases(covariates_df),]  # filter out any null rows
 
 # insert cellNos column used later for tracking rows
@@ -45,7 +51,7 @@ end_pos <- 6L
 
 # Point data
 # for us this contains the global observation sites + their itnerseteced covaraiate values
-observations_df <- read.table("/home/sudipta/repos/clhc_sampling/additional/intersected_covs.txt", header = T, sep = ",")
+observations_df <- read.table(file.path(input_dir, "intersected_covs_small_area_filtered.txt"), header = T, sep = ",")
 
 # insert cellNos column used later
 observations_df <- cbind(observations_df[1:2], type='existing', observations_df[, 3:ncol(observations_df)])
@@ -149,20 +155,20 @@ coordinates(existing_and_clhs_samples_spatial_df) <- ~X_REF + Y_REF
 # Coordinate reference systems
 proj4string(existing_and_clhs_samples_spatial_df) <- CRS("+init=epsg:3577")  # Australian albers
 ## Write point data to shapefile
-writeOGR(existing_and_clhs_samples_spatial_df, ".", "wa_test", "ESRI Shapefile", overwrite_layer = T)
+writeOGR(existing_and_clhs_samples_spatial_df, output_dir, "geochem_clhs_samples_small_area_filtered", "ESRI Shapefile", overwrite_layer = T)
 
 
 # composite quantiles raster output
 composite <- composite_from_quantiles(covariates_df[, start_pos: end_pos], quantiles = covariate_quantiles)
 raster <- rasterFromXYZ(cbind(covariates_df[, c("X_REF", "Y_REF")], composite))
 proj4string(raster) <- CRS("+init=epsg:3577")  # Australian albers
-writeRaster(raster, filename = "./composite_quantiles.tif", format = "GTiff", overwrite = TRUE)
+writeRaster(raster, filename = file.path(output_dir, "composite_quantiles_small_area_filtered.tif"), format = "GTiff", overwrite = TRUE)
 
 composite_sum <- rowSums(composite)
 r1 <- rasterFromXYZ(cbind(covariates_df[, c("X_REF", "Y_REF")], composite_sum=composite_sum))
 proj4string(r1) <- CRS("+init=epsg:3577")  # Australian albers
 plot(r1)
-writeRaster(r1, filename = "./composite_quantiles_sum.tif", format = "GTiff", overwrite = TRUE)
+writeRaster(r1, filename = file.path(output_dir, "composite_quantiles_sum_small_area_filtered.tif"), format = "GTiff", overwrite = TRUE)
 
 # create a shapefile with the same covariate values as those of LHC samples
 clhc_samples_df <- existing_and_clhs_samples_df %>% dplyr::filter(type != 'existing')
@@ -194,4 +200,4 @@ coordinates(classified_sample_quantiles_df) <- ~X_REF + Y_REF
 # Coordinate reference systems
 proj4string(classified_sample_quantiles_df) <- CRS("+init=epsg:3577")  # Australian albers
 ## Write point data to shapefile
-writeOGR(classified_sample_quantiles_df, ".", "clhs_samples", "ESRI Shapefile", overwrite_layer = T)
+writeOGR(classified_sample_quantiles_df, output_dir, "clhs_sample_classes_small_area_filtered", "ESRI Shapefile", overwrite_layer = T)
